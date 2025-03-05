@@ -14,7 +14,7 @@ function UserCartItemsContent({cartItem}){
 
 function handleUpdateQuantity(getCartItem, typeOfAction){
 if(typeOfAction == 'plus'){
-  let getCartItems = cartItems.items || [];
+  let getCartItems = cartItems?.items || [];
 
   if(getCartItems.length){
     const indexOfCurrentCartItem = getCartItems.findIndex(item=> item.productId === getCartItem?.productId);

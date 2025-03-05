@@ -29,15 +29,15 @@ function ShoppingCheckout(){
     }
   },[cartItems])
 
-  const totalCartAmount = cartItems && cartItems.items && cartItems.items.length > 0 ? 
-  cartItems.items.reduce((sum,currentItem) => sum + (
+  const totalCartAmount = cartItems && cartItems?.items && cartItems?.items?.length > 0 ? 
+  cartItems?.items.reduce((sum,currentItem) => sum + (
     currentItem?.salePrice > 0 ? currentItem?.salePrice : currentItem?.price
 
   ) * currentItem?.quantity, 0) 
   : 0 ;
 
 function handleInitiatePaypalPayment(){
-  if(!cartItems || cartItems.items.length === 0){
+  if(!cartItems || cartItems?.items?.length === 0){
     toast({
       title : 'Your cart is empty. Please add items to proceed',
       variant : 'destructive'
@@ -59,7 +59,7 @@ if(currentSelectedAddress == null){
   const orderData={
   userId : user?.id,
   cartId : cartItems?._id,
-  cartItems : cartItems.items.map(singleCartItem =>({
+  cartItems : cartItems?.items.map(singleCartItem =>({
     productId: singleCartItem?.productId,
       title: singleCartItem?.title,
       image: singleCartItem?.image,
@@ -127,8 +127,8 @@ useEffect(() => {
        <Address selectedId={currentSelectedAddress} setCurrentSelectedAddress={setCurrentSelectedAddress}/>
        <div className='flex flex-col gap-4'>
          {
-          cartItems && cartItems.items && cartItems.items.length > 0 ?
-          cartItems.items.map(item=> <UserCartItemsContent cartItem={item}/>) :
+          cartItems && cartItems?.items && cartItems?.items?.length > 0 ?
+          cartItems?.items.map(item=> <UserCartItemsContent cartItem={item}/>) :
           null
          }
          <div className="mt-8 space-y-4">

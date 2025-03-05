@@ -74,7 +74,7 @@ function handleGetProductDetails(getCurrentProductId){
 }
 
 function handleAddToCart(getCurrentProductId, getTotalStock) {
-  let getCartItems = cartItems.items || [];
+  let getCartItems = cartItems?.items || [];
 
   if (getCartItems.length) {
     const indexOfCurrentItem = getCartItems.findIndex(

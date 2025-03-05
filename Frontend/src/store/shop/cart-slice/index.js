@@ -87,7 +87,8 @@ const shoppingCartSlice = createSlice({
       })
       .addCase(fetchCartItems.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.cartItems = action.payload.data;
+        state.cartItems = action.payload.data || [];
+        //console.log("fetch",action.payload.data.items)
       })
       .addCase(fetchCartItems.rejected, (state) => {
         state.isLoading = false;

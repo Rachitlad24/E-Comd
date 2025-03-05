@@ -134,7 +134,7 @@ function HeaderRightContent() {
         </Button>
         <UserCartWrapper
           setOpenCartSheet={setOpenCartSheet}
-          cartItems={cartItems?.items?.length > 0 ? cartItems.items : []}
+          cartItems={cartItems?.items?.length > 0 ? cartItems?.items : []}
         />
       </Sheet>
 
