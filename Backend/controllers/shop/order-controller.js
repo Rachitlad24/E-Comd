@@ -11,125 +11,131 @@ require("dotenv").config();
 
 
 const createOrder = async (req, res) => {
-    try {
-        const {
-            userId,
-            cartItems,
-            addressInfo,
-            orderStatus,
-            paymentMethod,
-            paymentStatus,
-            totalAmount,
-            orderDate,
-            orderUpdateDate,
-            paymentId,
-            payerId,
-            cartId,
-          } = req.body;
+  try {
+      const {
+          userId,
+          cartItems,
+          addressInfo,
+          orderStatus,
+          paymentMethod,
+          paymentStatus,
+          totalAmount,
+          orderDate,
+          orderUpdateDate,
+          paymentId,
+          payerId,
+          cartId,
+      } = req.body;
 
-          const create_payment_json = {
-            intent: process.env.INTENT,
-            payer: {
-              payment_method: process.env.PAYMENT_METHOD,
-            },
-            redirect_urls: {
-              return_url: process.env.RETURN_URL,
-              cancel_url: process.env.CANCEL_URL,
-            },
-            transactions: [
-              {
-                item_list: {
-                  items: cartItems.map((item) => ({
-                    name: item.title,
-                    sku: item.productId,
-                    price: item.price.toFixed(2),
-                    currency: process.env.CURRENCY,
-                    quantity: item.quantity,
-                  })),
-                },
-                amount: {
-                  currency: process.env.CURRENCY,
-                  total: totalAmount.toFixed(2),
-                },
-                description: "Order Payment",
-              },
-            ],
-          };
+      const newlyCreatedOrder = new Order({
+          userId,
+          cartItems,
+          addressInfo,
+          orderStatus,
+          paymentMethod,
+          paymentStatus,
+          totalAmount,
+          orderDate,
+          orderUpdateDate,
+          paymentId,
+          payerId,
+          cartId,
+          stockDeducted: false, // 🚨 Ensure stock is not deducted twice
+      });
 
-          paypal.payment.create(create_payment_json, async (error, paymentInfo) => {
-            if (error) {
-              console.log(error);
-      
-              return res.status(500).json({
-                success: false,
-                message: "Error while creating paypal payment",
-              });
-            } else {
-              const newlyCreatedOrder = new Order({
-                userId,
-                cartItems,
-                addressInfo,
-                orderStatus,
-                paymentMethod,
-                paymentStatus,
-                totalAmount,
-                orderDate,
-                orderUpdateDate,
-                paymentId,
-                payerId,
-                cartId
-              });
-      
-              await newlyCreatedOrder.save();
-              if (paymentMethod === "cod") {
-                for (let item of cartItems) {
+      await newlyCreatedOrder.save();
+
+      if (paymentMethod === "cod") {
+          // 🚨 Check if stock is already deducted
+          if (!newlyCreatedOrder.stockDeducted) {
+              for (let item of cartItems) {
                   let product = await Product.findById(item.productId);
                   if (!product) {
-                    return res.json({
-                      success: false,
-                      message: `Product ${item.title} not found`,
-                    });
+                      return res.status(400).json({
+                          success: false,
+                          message: `Product ${item.title} not found`,
+                      });
                   }
                   if (product.totalStock < item.quantity) {
-                    return res.json({
-                      success: false,
-                      message: `Insufficient stock for product: ${item.title}`,
-                    });
+                      return res.status(400).json({
+                          success: false,
+                          message: `Insufficient stock for product: ${item.title}`,
+                      });
                   }
                   product.totalStock -= item.quantity;
                   await product.save();
-                }
-          
-                await Cart.findByIdAndDelete(cartId);
-                return res.status(201).json({
-                  success: true,
-                  message: "Order placed successfully with Cash on Delivery!",
-                  orderId:  newlyCreatedOrder._id,
-                });
               }
-      
-              const approvalURL = paymentInfo.links.find(
-                (link) => link.rel === "approval_url"
-              ).href;
-      
-              res.status(201).json({
-                success: true,
-                approvalURL,
-                orderId: newlyCreatedOrder._id,
-              });
-            }
-          });
-      
 
-    }catch(e){
-        console.log(e);
-        res.status(500).json({
-            success : false,
-            message : "Some error occured!"
-        })
-        
-    }
-}
+              newlyCreatedOrder.stockDeducted = true; // 🚀 Mark stock as deducted
+              await newlyCreatedOrder.save();
+          }
+
+          await Cart.findByIdAndDelete(cartId);
+          return res.status(201).json({
+              success: true,
+              message: "Order placed successfully with Cash on Delivery!",
+              orderId: newlyCreatedOrder._id,
+          });
+      }
+
+      // If payment method is PayPal, create PayPal payment
+      const create_payment_json = {
+          intent: process.env.INTENT,
+          payer: {
+              payment_method: process.env.PAYMENT_METHOD,
+          },
+          redirect_urls: {
+              return_url: process.env.RETURN_URL,
+              cancel_url: process.env.CANCEL_URL,
+          },
+          transactions: [
+              {
+                  item_list: {
+                      items: cartItems.map((item) => ({
+                          name: item.title,
+                          sku: item.productId,
+                          price: item.price.toFixed(2),
+                          currency: process.env.CURRENCY,
+                          quantity: item.quantity,
+                      })),
+                  },
+                  amount: {
+                      currency: process.env.CURRENCY,
+                      total: totalAmount.toFixed(2),
+                  },
+                  description: "Order Payment",
+              },
+          ],
+      };
+
+      paypal.payment.create(create_payment_json, async (error, paymentInfo) => {
+          if (error) {
+              console.log(error);
+              return res.status(500).json({
+                  success: false,
+                  message: "Error while creating PayPal payment",
+              });
+          } else {
+              const approvalURL = paymentInfo.links.find(
+                  (link) => link.rel === "approval_url"
+              ).href;
+
+              res.status(201).json({
+                  success: true,
+                  approvalURL,
+                  orderId: newlyCreatedOrder._id,
+              });
+          }
+      });
+
+  } catch (e) {
+      console.log(e);
+      res.status(500).json({
+          success: false,
+          message: "Some error occurred!",
+      });
+  }
+};
 
 const capturePayment = async (req, res) => {
   try {
@@ -153,7 +159,7 @@ const capturePayment = async (req, res) => {
     }
     
     if (order.paymentMethod === "cod") {
-      // For COD orders, directly confirm order
+      // COD orders: Confirm order but don't deduct stock again if already deducted
       order.paymentStatus = "pending"; // Payment is still pending for COD
       order.orderStatus = "confirmed";
     } else if (order.paymentMethod === "paypal") {
@@ -162,32 +168,36 @@ const capturePayment = async (req, res) => {
         return res.json({ success: false, message: "Missing PayPal payment details" });
       }
 
-
-    order.paymentStatus = "paid";
-    order.orderStatus = "confirmed";
-    order.paymentId = paymentId;
-    order.payerId = payerId;
+      order.paymentStatus = "paid";
+      order.orderStatus = "confirmed";
+      order.paymentId = paymentId;
+      order.payerId = payerId;
     }
-    for (let item of order.cartItems) {
-      let product = await Product.findById(item.productId);
 
-      if (!product) {
-        return res.json({
-          success: false,
-          message: 'Product ${item.productId} not found'
-        });
+    // 🚨 Prevent double stock deduction
+    if (!order.stockDeducted) {
+      for (let item of order.cartItems) {
+        let product = await Product.findById(item.productId);
+
+        if (!product) {
+          return res.json({
+            success: false,
+            message: `Product ${item.productId} not found`,
+          });
+        }
+
+        // 🚨 Ensure stock does not go negative
+        if (product.totalStock < item.quantity) {
+          return res.json({
+            success: false,
+            message: `Not enough stock for ${product.title}`,
+          });
+        }
+
+        product.totalStock -= item.quantity;
+        await product.save();
       }
-
-      // 🚨 Ensure stock does not go negative
-      if (product.totalStock < item.quantity) {
-        return res.json({
-          success: false,
-          message: 'Not enough stock for ${product.title}',
-        });
-      }
-
-      product.totalStock -= item.quantity;
-      await product.save();
+      order.stockDeducted = true; // Mark stock as deducted
     }
 
     const getCartId = order.cartId;
@@ -208,6 +218,7 @@ const capturePayment = async (req, res) => {
     });
   }
 };
+
 
 
 const getAllOrderByUser = async(req,res)=>{
