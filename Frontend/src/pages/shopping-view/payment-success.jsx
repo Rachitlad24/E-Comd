@@ -18,34 +18,73 @@ function PaymentSuccessPage(){
     const { user } = useSelector((state) => state.auth);
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(true); 
-    const effectRan = useRef(false);
+    //const effectRan = useRef(false);
 
   
     
 
-    useEffect(() => {
-      if (effectRan.current) return; // Prevent second execution
-    effectRan.current = true;
-      const orderId = localStorage.getItem('orderId');
+    // useEffect(() => {
+    //   if (effectRan.current) return; // Prevent second execution
+    // effectRan.current = true;
+    //   const orderId = localStorage.getItem('orderId');
   
-      if (orderId && user?.email) {
-        dispatch(sendEmail({ orderId, email: user.email })).then(() => {
-          setLoading(false); 
-          localStorage.removeItem('orderId');
-          if (!socket) return;
+    //   if (orderId && user?.email) {
+    //     dispatch(sendEmail({ orderId, email: user.email })).then(() => {
+    //       setLoading(false); 
+    //       localStorage.removeItem('orderId');
+    //       if (!socket) return;
 
-          socket.emit("sendNotification", {
-            message: `Order ${orderId} is confirmed`,
-            user: user.email, // Ensure user email is correct
-            orderId,
-          });
+    //       socket.emit("sendNotification", {
+    //         message: `Order ${orderId} is confirmed`,
+    //         user: user.email, // Ensure user email is correct
+    //         orderId,
+    //       });
           
-          dispatch(clearCart());
-        });
-      } else {
-        setLoading(false); 
+    //       dispatch(clearCart());
+    //     });
+    //   } else {
+    //     setLoading(false); 
+    //   }
+    // }, [ dispatch,user]);
+    useEffect(() => {
+      console.log("🔥 useEffect triggered");
+    
+      const orderId = localStorage.getItem("orderId");
+      console.log("📌 Retrieved orderId:", orderId);
+      console.log("👤 User email:", user?.email);
+    
+      if (!orderId || !user?.email) {
+        console.log("❌ No orderId or user email found. Exiting...");
+        return;
       }
-    }, [ dispatch,user]);
+    
+     
+      if (sessionStorage.getItem(`emailSent_${orderId}`) === "true") {
+        console.log("⚠️ Email already sent. Skipping API call.");
+        return;
+      }
+    
+      sessionStorage.setItem(`emailSent_${orderId}`, "true"); 
+    
+      console.log("🚀 Dispatching sendEmail...");
+      dispatch(sendEmail({ orderId, email: user.email })).then(() => {
+        console.log("✅ Email sent successfully!");
+        setLoading(false);
+        localStorage.removeItem("orderId");
+    
+        if (!socket) return;
+        socket.emit("sendNotification", {
+          message: `Order ${orderId} is confirmed`,
+          user: user.email,
+          orderId,
+        });
+    
+        dispatch(clearCart());
+      });
+    
+    }, [dispatch, user]);
+    
+    
   
   
     return(
