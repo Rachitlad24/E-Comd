@@ -40,13 +40,13 @@ const createOrder = async (req, res) => {
           paymentId,
           payerId,
           cartId,
-          stockDeducted: false, // 🚨 Ensure stock is not deducted twice
+          stockDeducted: false, // ✅ Prevent duplicate stock deduction
       });
 
       await newlyCreatedOrder.save();
 
       if (paymentMethod === "cod") {
-          // 🚨 Check if stock is already deducted
+          // ✅ Deduct stock for COD orders only
           if (!newlyCreatedOrder.stockDeducted) {
               for (let item of cartItems) {
                   let product = await Product.findById(item.productId);
@@ -66,7 +66,7 @@ const createOrder = async (req, res) => {
                   await product.save();
               }
 
-              newlyCreatedOrder.stockDeducted = true; // 🚀 Mark stock as deducted
+              newlyCreatedOrder.stockDeducted = true; // ✅ Mark stock as deducted
               await newlyCreatedOrder.save();
           }
 
@@ -78,7 +78,7 @@ const createOrder = async (req, res) => {
           });
       }
 
-      // If payment method is PayPal, create PayPal payment
+      // ✅ PayPal Payment: No stock deduction yet!
       const create_payment_json = {
           intent: process.env.INTENT,
           payer: {
@@ -137,87 +137,91 @@ const createOrder = async (req, res) => {
   }
 };
 
+
 const capturePayment = async (req, res) => {
   try {
-    const { paymentId, payerId, orderId } = req.body;
+      const { paymentId, payerId, orderId } = req.body;
 
-    let order = await Order.findById(orderId);
+      let order = await Order.findById(orderId);
 
-    if (!order) {
-      return res.json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    // 🚨 Check if payment was already processed
-    if (order.paymentStatus === "paid") {
-      return res.json({
-        success: false,
-        message: "Order has already been paid for",
-      });
-    }
-    
-    if (order.paymentMethod === "cod") {
-      // COD orders: Confirm order but don't deduct stock again if already deducted
-      order.paymentStatus = "pending"; // Payment is still pending for COD
-      order.orderStatus = "confirmed";
-    } else if (order.paymentMethod === "paypal") {
-      // Ensure PayPal order has necessary payment details
-      if (!paymentId || !payerId) {
-        return res.json({ success: false, message: "Missing PayPal payment details" });
+      if (!order) {
+          return res.json({
+              success: false,
+              message: "Order not found",
+          });
       }
 
-      order.paymentStatus = "paid";
-      order.orderStatus = "confirmed";
-      order.paymentId = paymentId;
-      order.payerId = payerId;
-    }
-
-    // 🚨 Prevent double stock deduction
-    if (!order.stockDeducted) {
-      for (let item of order.cartItems) {
-        let product = await Product.findById(item.productId);
-
-        if (!product) {
+      // ✅ Prevent duplicate payments
+      if (order.paymentStatus === "paid") {
           return res.json({
-            success: false,
-            message: `Product ${item.productId} not found`,
+              success: false,
+              message: "Order has already been paid for",
           });
-        }
-
-        // 🚨 Ensure stock does not go negative
-        if (product.totalStock < item.quantity) {
-          return res.json({
-            success: false,
-            message: `Not enough stock for ${product.title}`,
-          });
-        }
-
-        product.totalStock -= item.quantity;
-        await product.save();
       }
-      order.stockDeducted = true; // Mark stock as deducted
-    }
 
-    const getCartId = order.cartId;
-    await Cart.findByIdAndDelete(getCartId);
-    await order.save();
+      if (order.paymentMethod === "cod") {
+          // ✅ COD: Do not deduct stock again
+          order.paymentStatus = "pending"; 
+          order.orderStatus = "confirmed";
+      } else if (order.paymentMethod === "paypal") {
+          // ✅ Ensure PayPal has necessary payment details
+          if (!paymentId || !payerId) {
+              return res.json({
+                  success: false,
+                  message: "Missing PayPal payment details",
+              });
+          }
 
-    res.status(200).json({
-      success: true,
-      message: "Order confirmed",
-      data: order,
-    });
+          order.paymentStatus = "paid";
+          order.orderStatus = "confirmed";
+          order.paymentId = paymentId;
+          order.payerId = payerId;
+
+          // ✅ Deduct stock ONLY for PayPal (after payment confirmation)
+          if (!order.stockDeducted) {
+              for (let item of order.cartItems) {
+                  let product = await Product.findById(item.productId);
+
+                  if (!product) {
+                      return res.json({
+                          success: false,
+                          message: `Product ${item.productId} not found`,
+                      });
+                  }
+
+                  if (product.totalStock < item.quantity) {
+                      return res.json({
+                          success: false,
+                          message: `Not enough stock for ${product.title}`,
+                      });
+                  }
+
+                  product.totalStock -= item.quantity;
+                  await product.save();
+              }
+              order.stockDeducted = true; // ✅ Mark stock as deducted
+              await order.save();
+          }
+      }
+
+      await Cart.findByIdAndDelete(order.cartId);
+      await order.save();
+
+      res.status(200).json({
+          success: true,
+          message: "Order confirmed",
+          data: order,
+      });
 
   } catch (e) {
-    console.log("Payment error:", e);
-    res.status(500).json({
-      success: false,
-      message: "Some error occurred!",
-    });
+      console.log("Payment error:", e);
+      res.status(500).json({
+          success: false,
+          message: "Some error occurred!",
+      });
   }
 };
+
 
 
 
