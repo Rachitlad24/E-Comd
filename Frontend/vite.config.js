@@ -12,5 +12,7 @@ export default defineConfig({
   server: {
     port: process.env.PORT || 5173,
     host: "0.0.0.0",
+    strictPort: true,
+    allowedHosts: ["e-comd-1.onrender.com"], // Allow your deployed Render domain
   }
 })
