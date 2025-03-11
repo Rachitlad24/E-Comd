@@ -305,7 +305,7 @@ const sendEmail = async (req, res) => {
   const message = {
     from: process.env.AUTH_EMAIL,
     to: email,
-    subject: "Order COnfirmation Mail",
+    subject: "Order Confirmation Mail",
     
     html: orderHtml
       .replaceAll("{{ORDER_NUMBER}}", order._id)
