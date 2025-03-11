@@ -105,7 +105,7 @@ const authMiddleware = async (req,res,next) =>
         message : 'Unauthorized user!'
     })
     try {
-      const decoded = jwt.verify(token,'CLIENT_SECRET_KEY');
+      const decoded = jwt.verify(token,process.env.CLIENT_SECRET);
       req.user = decoded;
       next()
 
