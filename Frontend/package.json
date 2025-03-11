@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start":"echo('build')",
+   "start": "echo build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
