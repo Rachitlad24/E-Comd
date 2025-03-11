@@ -100,7 +100,7 @@ const logoutUser = (req, res) => {
 const authMiddleware = async (req,res,next) =>
 {
     const token = req.cookies.token;
-    if(!token) return res.status(401).json({
+    if(!token) return res.json({
         success : false ,
         message : 'Unauthorized user!'
     })
@@ -111,7 +111,7 @@ const authMiddleware = async (req,res,next) =>
 
     }
     catch(error){
-        res.status(401).json({
+        res.json({
             success : false ,
             message : 'Unauthorized user!'
         })
