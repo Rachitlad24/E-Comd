@@ -89,11 +89,16 @@ console.log(password,'login')
 };
 
 const logoutUser = (req, res) => {
-    res.clearCookie("token").json({
+  res.clearCookie("token", {
+      httpOnly: true, 
+      secure: true,   
+      sameSite: "None" 
+  }).status(200).json({
       success: true,
       message: "Logged out successfully!",
-    });
-  };
+  });
+};
+
   
 
 // auth middleware
