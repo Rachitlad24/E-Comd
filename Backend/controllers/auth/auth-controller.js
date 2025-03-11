@@ -66,7 +66,7 @@ console.log(password,'login')
         userName : checkUser.userName
     }, process.env.CLIENT_SECRET,{expiresIn : '60m'})
 
-    res.cookie('token',token,{httpOnly : true, secure : false}).json({
+    res.cookie('token',token,{httpOnly : true, secure : true, sameSite: "None"}).json({
         success : true,
         message : 'LoggedIn Sucessfully',
         user : {
