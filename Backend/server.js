@@ -33,11 +33,12 @@ mongoose
 // Middleware
 app.use(
   cors({
-    origin: "https://e-comd-1.onrender.com",
+    origin: ["https://e-comd-1.onrender.com", "http://localhost:5173"], // Allow both frontend URLs
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
 );
+
 app.use(cookieParser());
 app.use(express.json());
 
