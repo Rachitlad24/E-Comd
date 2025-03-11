@@ -294,7 +294,7 @@ const sendEmail = async (req, res) => {
   }
   const tempPath = path.join(__dirname, process.env.ORDER_HTML);
   let orderHtml = fs.readFileSync(tempPath, "utf8");
-  const pdfBuffer=await generatePdf(order)
+  // const pdfBuffer=await generatePdf(order)
   const transporter = nodemailer.createTransport({
     service: process.env.SERVICE,
     auth: {
@@ -310,13 +310,13 @@ const sendEmail = async (req, res) => {
     html: orderHtml
       .replaceAll("{{ORDER_NUMBER}}", order._id)
       .replaceAll("{{ORDER_TOTAL}}", order.totalAmount),
-      attachments: [
-        {
-          filename: `Invoice_${order._id}.pdf`,
-          content: pdfBuffer, // Attach PDF from memory
-          contentType: "application/pdf",
-        },
-      ],
+      // attachments: [
+      //   {
+      //     filename: `Invoice_${order._id}.pdf`,
+      //     content: pdfBuffer, // Attach PDF from memory
+      //     contentType: "application/pdf",
+      //   },
+      // ],
   };
   transporter.sendMail(message, (error, info) => {
     if (error) {
