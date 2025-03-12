@@ -6,8 +6,9 @@ const User = require('../../models/User')
 const nodemailer = require("nodemailer");
 const fs = require("fs");
 const path = require("path");
-const puppeteer = require("puppeteer");
+//const puppeteer = require("puppeteer");
 require("dotenv").config();
+const pdf= require("html-pdf");
 
 
 const createOrder = async (req, res) => {
@@ -294,7 +295,7 @@ const sendEmail = async (req, res) => {
   }
   const tempPath = path.join(__dirname, process.env.ORDER_HTML);
   let orderHtml = fs.readFileSync(tempPath, "utf8");
-  // const pdfBuffer=await generatePdf(order)
+  const pdfBuffer=await generatePdf(order)
   const transporter = nodemailer.createTransport({
     service: process.env.SERVICE,
     auth: {
@@ -310,13 +311,13 @@ const sendEmail = async (req, res) => {
     html: orderHtml
       .replaceAll("{{ORDER_NUMBER}}", order._id)
       .replaceAll("{{ORDER_TOTAL}}", order.totalAmount),
-      // attachments: [
-      //   {
-      //     filename: `Invoice_${order._id}.pdf`,
-      //     content: pdfBuffer, // Attach PDF from memory
-      //     contentType: "application/pdf",
-      //   },
-      // ],
+       attachments: [
+         {
+           filename: `Invoice_${order._id}.pdf`,
+           content: pdfBuffer, // Attach PDF from memory
+           contentType: "application/pdf",
+         },
+       ],
   };
   transporter.sendMail(message, (error, info) => {
     if (error) {
@@ -341,43 +342,82 @@ const sendEmail = async (req, res) => {
   }
   
 };
-const generatePdf=async(order)=>{
-  const user=await User.findById(order.userId)
-  if(!user){
-    return res.json({
-      success:false,
-      message:'User not found'
-    })
-  }
-  const browser=await puppeteer.launch({headless:'new'})
+// const generatePdf=async(order)=>{
+//   const user=await User.findById(order.userId)
+//   if(!user){
+//     return res.json({
+//       success:false,
+//       message:'User not found'
+//     })
+//   }
+//   const browser=await puppeteer.launch({headless:'new'})
  
-  const page=await browser.newPage()
-  console.log(order.addressInfo.address," ",order.addressInfo.city,' ',user.userName);
+//   const page=await browser.newPage()
+//   console.log(order.addressInfo.address," ",order.addressInfo.city,' ',user.userName);
   
-  const tempPath=path.join(__dirname,process.env.INVOICE_HTML)
-  let htmlContent= fs.readFileSync(tempPath,'utf8')
-  const orderItemsHtml=order.cartItems.map((item) => `
-  <tr>
-    <td>${item.title}</td>
-    <td>${item.quantity}</td>
-    <td>$${parseFloat(item.price).toFixed(2)}</td>
-    <td>$${(parseFloat(item.price) * item.quantity).toFixed(2)}</td>
-  </tr>`
-).join('')
-htmlContent=htmlContent
-.replace('{{ORDER_ID}}',order._id)
-.replaceAll('{{ORDER_TOTAL}}',order.totalAmount.toFixed(2))
-.replace("{{ORDER_DATE}}", new Date(order.orderDate).toLocaleDateString())
-.replaceAll('{{NAME}}',user.userName)
-.replace('{{ADDRESS_AREA}}',order.addressInfo.address)
-.replace('{{ADDRESS_CITY}}',order.addressInfo.city)
-.replace('{{ADDRESS_PINCODE}}',order.addressInfo.pincode)
-.replace("{{ORDER_ITEMS}}", orderItemsHtml);
-await page.setContent(htmlContent)
-const pdfBuffer=await page.pdf({format:"A4",printBackground:true})
-await browser.close()
-return pdfBuffer
-}
+//   const tempPath=path.join(__dirname,process.env.INVOICE_HTML)
+//   let htmlContent= fs.readFileSync(tempPath,'utf8')
+//   const orderItemsHtml=order.cartItems.map((item) => `
+//   <tr>
+//     <td>${item.title}</td>
+//     <td>${item.quantity}</td>
+//     <td>$${parseFloat(item.price).toFixed(2)}</td>
+//     <td>$${(parseFloat(item.price) * item.quantity).toFixed(2)}</td>
+//   </tr>`
+// ).join('')
+// htmlContent=htmlContent
+// .replace('{{ORDER_ID}}',order._id)
+// .replaceAll('{{ORDER_TOTAL}}',order.totalAmount.toFixed(2))
+// .replace("{{ORDER_DATE}}", new Date(order.orderDate).toLocaleDateString())
+// .replaceAll('{{NAME}}',user.userName)
+// .replace('{{ADDRESS_AREA}}',order.addressInfo.address)
+// .replace('{{ADDRESS_CITY}}',order.addressInfo.city)
+// .replace('{{ADDRESS_PINCODE}}',order.addressInfo.pincode)
+// .replace("{{ORDER_ITEMS}}", orderItemsHtml);
+// await page.setContent(htmlContent)
+// const pdfBuffer=await page.pdf({format:"A4",printBackground:true})
+// await browser.close()
+// return pdfBuffer
+// }
+const generatePdf = async (order) => {
+  const user = await User.findById(order.userId);
+  if (!user) {
+    return res.json({
+      success: false,
+      message: 'User not found'
+    });
+  }
+
+  const tempPath = path.join(__dirname, process.env.INVOICE_HTML);
+  let htmlContent = fs.readFileSync(tempPath, 'utf8');
+
+  const orderItemsHtml = order.cartItems.map((item) => `
+    <tr>
+      <td>${item.title}</td>
+      <td>${item.quantity}</td>
+      <td>$${parseFloat(item.price).toFixed(2)}</td>
+      <td>$${(parseFloat(item.price) * item.quantity).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  htmlContent = htmlContent
+    .replace('{{ORDER_ID}}', order._id)
+    .replaceAll('{{ORDER_TOTAL}}', order.totalAmount.toFixed(2))
+    .replace('{{ORDER_DATE}}', new Date(order.orderDate).toLocaleDateString())
+    .replaceAll('{{NAME}}', user.userName)
+    .replace('{{ADDRESS_AREA}}', order.addressInfo[0].address)
+    .replace('{{ADDRESS_CITY}}', order.addressInfo[0].city)
+    .replace('{{ADDRESS_PINCODE}}', order.addressInfo[0].pincode)
+    .replace('{{ORDER_ITEMS}}', orderItemsHtml);
+
+  return new Promise((resolve, reject) => {
+    pdf.create(htmlContent).toBuffer((err, buffer) => {
+      if (err) return reject(err);
+      resolve(buffer);
+    });
+  });
+};
+
 const changePaymentStatus=async(req,res)=>{
   try {
     const {orderId}=req.body
