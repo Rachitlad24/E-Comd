@@ -8,7 +8,7 @@ const fs = require("fs");
 const path = require("path");
 //const puppeteer = require("puppeteer");
 require("dotenv").config();
-const pdf= require("html-pdf");
+const pdf = require('html-pdf');
 
 
 const createOrder = async (req, res) => {
@@ -405,9 +405,9 @@ const generatePdf = async (order) => {
     .replaceAll('{{ORDER_TOTAL}}', order.totalAmount.toFixed(2))
     .replace('{{ORDER_DATE}}', new Date(order.orderDate).toLocaleDateString())
     .replaceAll('{{NAME}}', user.userName)
-    .replace('{{ADDRESS_AREA}}', order.addressInfo[0].address)
-    .replace('{{ADDRESS_CITY}}', order.addressInfo[0].city)
-    .replace('{{ADDRESS_PINCODE}}', order.addressInfo[0].pincode)
+    .replace('{{ADDRESS_AREA}}', order.addressInfo.address)
+    .replace('{{ADDRESS_CITY}}', order.addressInfo.city)
+    .replace('{{ADDRESS_PINCODE}}', order.addressInfo.pincode)
     .replace('{{ORDER_ITEMS}}', orderItemsHtml);
 
   return new Promise((resolve, reject) => {
